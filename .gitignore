@@ -81,3 +81,6 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 # lint/reports/
+
+# Do NOT ignore gradle wrapper jar - needed for CI
+!gradle/wrapper/gradle-wrapper.jar
