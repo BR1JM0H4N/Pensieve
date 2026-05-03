@@ -23,10 +23,11 @@ public class MediaSaver {
     private final Context context;
     private final ExecutorService executor = Executors.newFixedThreadPool(3);
 
-    public interface SaveCallback {
+    public interface OnSaved {
         void onSaved(String filePath, String fileName);
-        void onError(String message);
     }
+
+
 
     public MediaSaver(Context context) {
         this.context = context;
@@ -113,7 +114,7 @@ public class MediaSaver {
         return false;
     }
 
-    public void saveFromUrl(String urlStr, String mimeType, SaveCallback callback) {
+    public void saveFromUrl(String urlStr, String mimeType, OnSaved callback) {
         executor.execute(() -> {
             try {
                 if (alreadySaved(urlStr)) {
@@ -159,12 +160,12 @@ public class MediaSaver {
 
             } catch (IOException e) {
                 Log.e(TAG, "Failed to save: " + urlStr, e);
-                if (callback != null) callback.onError(e.getMessage());
+                Log.e(TAG, "Save error: " + e.getMessage());
             }
         });
     }
 
-    public void saveBytes(byte[] data, String mimeType, String suggestedName, SaveCallback callback) {
+    public void saveBytes(byte[] data, String mimeType, String suggestedName, OnSaved callback) {
         executor.execute(() -> {
             try {
                 MediaItem.Type type = getTypeFromMime(mimeType);
@@ -178,7 +179,7 @@ public class MediaSaver {
                 }
                 if (callback != null) callback.onSaved(outFile.getAbsolutePath(), fileName);
             } catch (IOException e) {
-                if (callback != null) callback.onError(e.getMessage());
+                Log.e(TAG, "Save error: " + e.getMessage());
             }
         });
     }

@@ -64,8 +64,7 @@ public class ResourceInterceptor {
         if (url.length() < 20) return;
 
         Log.d(TAG, "Intercepted media: " + mime + " -> " + url);
-        saver.saveFromUrl(url, mime, (filePath, fileName) ->
-                Log.d(TAG, "Auto-saved: " + fileName));
+        saver.saveFromUrl(url, mime, (filePath, fileName) -> Log.d(TAG, "Auto-saved: " + fileName));
     }
 
     public void shutdown() {
