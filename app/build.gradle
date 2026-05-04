@@ -6,8 +6,6 @@ apply plugin: 'kotlin-kapt'
 android {
     compileSdk 33
     namespace 'acr.browser.lightning'
-
-    defaultConfig {
         minSdk 21
         targetSdk 33
         versionName "5.1.0"

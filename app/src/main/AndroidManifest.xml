@@ -2,7 +2,6 @@
 <!-- Copyright 2014 A.C.R. Development -->
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="acr.browser.lightning"
     android:installLocation="auto">
 
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -49,6 +48,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:exported="true"
             android:alwaysRetainTaskState="true"
             android:clearTaskOnLaunch="false"
             android:colorMode="wideColorGamut"
@@ -140,6 +140,7 @@
         </activity>
         <activity
             android:name=".IncognitoActivity"
+            android:exported="true"
             android:alwaysRetainTaskState="true"
             android:colorMode="wideColorGamut"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard"
@@ -157,6 +158,7 @@
         </activity>
         <activity
             android:name=".settings.activity.SettingsActivity"
+            android:exported="true"
             android:colorMode="wideColorGamut"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard"
             android:label="@string/settings"
@@ -169,6 +171,7 @@
         </activity>
         <activity
             android:name=".reading.activity.ReadingActivity"
+            android:exported="true"
             android:colorMode="wideColorGamut"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard"
             android:label="@string/reading_mode"
