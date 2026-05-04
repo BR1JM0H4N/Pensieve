@@ -1,7 +1,7 @@
 package acr.browser.lightning.mediacatcher
 
 import android.os.Parcelable
-import kotlinx.android.parcel.Parcelize
+import kotlinx.parcelize.Parcelize
 
 enum class MediaType { IMAGE, VIDEO, AUDIO, OTHER }
 
@@ -9,7 +9,7 @@ enum class MediaType { IMAGE, VIDEO, AUDIO, OTHER }
 data class MediaItem(
     val id: Long = System.currentTimeMillis(),
     val url: String,
-    val localPath: String,       // absolute path on disk
+    val localPath: String,
     val mimeType: String,
     val mediaType: MediaType,
     val sourcePageUrl: String,
