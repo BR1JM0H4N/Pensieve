@@ -80,7 +80,6 @@ import androidx.core.net.toUri
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.palette.graphics.Palette
-import butterknife.ButterKnife
 import com.anthonycr.grant.PermissionsManager
 import io.reactivex.Completable
 import io.reactivex.Scheduler
@@ -202,7 +201,6 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         super.onCreate(savedInstanceState)
         injector.inject(this)
         setContentView(R.layout.activity_main)
-        ButterKnife.bind(this)
 
         if (isIncognito()) {
             incognitoNotification = IncognitoNotification(this, notificationManager)

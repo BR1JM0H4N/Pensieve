@@ -104,9 +104,6 @@ dependencies {
     kapt "com.google.dagger:dagger-compiler:$daggerVersion"
     compileOnly 'javax.annotation:jsr250-api:1.0'
 
-    final def butterKnifeVersion = '10.2.3'
-    implementation "com.jakewharton:butterknife:$butterKnifeVersion"
-    kapt "com.jakewharton:butterknife-compiler:$butterKnifeVersion"
 
     implementation 'net.i2p.android:client:0.9.42'
     implementation 'net.i2p.android:helper:0.9.5'

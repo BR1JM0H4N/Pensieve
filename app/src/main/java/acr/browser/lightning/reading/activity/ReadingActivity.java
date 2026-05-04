@@ -33,8 +33,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import butterknife.BindView;
-import butterknife.ButterKnife;
 import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import io.reactivex.disposables.Disposable;
@@ -43,12 +41,6 @@ public class ReadingActivity extends AppCompatActivity {
 
     private static final String LOAD_READING_URL = "ReadingUrl";
 
-    /**
-     * Launches this activity with the necessary URL argument.
-     *
-     * @param context The context needed to launch the activity.
-     * @param url     The URL that will be loaded into reading mode.
-     */
     public static void launch(@NonNull Context context, @NonNull String url) {
         final Intent intent = new Intent(context, ReadingActivity.class);
         intent.putExtra(LOAD_READING_URL, url);
@@ -57,8 +49,9 @@ public class ReadingActivity extends AppCompatActivity {
 
     private static final String TAG = "ReadingActivity";
 
-    @BindView(R.id.textViewTitle) TextView mTitle;
-    @BindView(R.id.textViewBody) TextView mBody;
+    // Replaced @BindView with manual findViewById (ButterKnife breaks on AGP 8 + Java 17)
+    private TextView mTitle;
+    private TextView mBody;
 
     @Inject UserPreferences mUserPreferences;
     @Inject @NetworkScheduler Scheduler mNetworkScheduler;
@@ -95,7 +88,10 @@ public class ReadingActivity extends AppCompatActivity {
         }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.reading_view);
-        ButterKnife.bind(this);
+
+        // Manual view binding — replaces ButterKnife.bind(this)
+        mTitle = findViewById(R.id.textViewTitle);
+        mBody = findViewById(R.id.textViewBody);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -119,20 +115,13 @@ public class ReadingActivity extends AppCompatActivity {
 
     private static float getTextSize(int size) {
         switch (size) {
-            case 0:
-                return XSMALL;
-            case 1:
-                return SMALL;
-            case 2:
-                return MEDIUM;
-            case 3:
-                return LARGE;
-            case 4:
-                return XLARGE;
-            case 5:
-                return XXLARGE;
-            default:
-                return MEDIUM;
+            case 0: return XSMALL;
+            case 1: return SMALL;
+            case 2: return MEDIUM;
+            case 3: return LARGE;
+            case 4: return XLARGE;
+            case 5: return XXLARGE;
+            default: return MEDIUM;
         }
     }
 
@@ -143,16 +132,11 @@ public class ReadingActivity extends AppCompatActivity {
     }
 
     private boolean loadPage(@Nullable Intent intent) {
-        if (intent == null) {
-            return false;
-        }
+        if (intent == null) return false;
         mUrl = intent.getStringExtra(LOAD_READING_URL);
-        if (mUrl == null) {
-            return false;
-        }
-        if (getSupportActionBar() != null) {
+        if (mUrl == null) return false;
+        if (getSupportActionBar() != null)
             getSupportActionBar().setTitle(Utils.getDisplayDomainName(mUrl));
-        }
 
         mProgressDialog = new ProgressDialog(ReadingActivity.this);
         mProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
@@ -213,24 +197,17 @@ public class ReadingActivity extends AppCompatActivity {
             mBodyText = body;
         }
 
-        @NonNull
-        public String getTitle() {
-            return mTitleText;
-        }
-
-        @NonNull
-        public String getBody() {
-            return mBodyText;
-        }
+        @NonNull public String getTitle() { return mTitleText; }
+        @NonNull public String getBody()  { return mBodyText; }
     }
 
     private void setText(String title, String body) {
-        if (mTitle == null || mBody == null)
-            return;
+        if (mTitle == null || mBody == null) return;
         if (mTitle.getVisibility() == View.INVISIBLE) {
             mTitle.setAlpha(0.0f);
             mTitle.setVisibility(View.VISIBLE);
             mTitle.setText(title);
+            ObjectAnimator.ofFloat(mTitle, "alpha", 1.0f).setDuration(300);
             ObjectAnimator animator = ObjectAnimator.ofFloat(mTitle, "alpha", 1.0f);
             animator.setDuration(300);
             animator.start();
@@ -253,7 +230,6 @@ public class ReadingActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         mPageLoaderSubscription.dispose();
-
         if (mProgressDialog != null && mProgressDialog.isShowing()) {
             mProgressDialog.dismiss();
             mProgressDialog = null;
@@ -274,43 +250,25 @@ public class ReadingActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             case R.id.invert_item:
                 mUserPreferences.setInvertColors(!mInvert);
-                if (mUrl != null) {
-                    ReadingActivity.launch(this, mUrl);
-                    finish();
-                }
+                if (mUrl != null) { ReadingActivity.launch(this, mUrl); finish(); }
                 break;
             case R.id.text_size_item:
-
                 View view = LayoutInflater.from(this).inflate(R.layout.dialog_seek_bar, null);
                 final SeekBar bar = view.findViewById(R.id.text_size_seekbar);
                 bar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
-
-                    @Override
-                    public void onProgressChanged(SeekBar view, int size, boolean user) {
-                        mBody.setTextSize(getTextSize(size));
-                    }
-
-                    @Override
-                    public void onStartTrackingTouch(SeekBar arg0) {
-                    }
-
-                    @Override
-                    public void onStopTrackingTouch(SeekBar arg0) {
-                    }
-
+                    @Override public void onProgressChanged(SeekBar v, int size, boolean user) { mBody.setTextSize(getTextSize(size)); }
+                    @Override public void onStartTrackingTouch(SeekBar a) {}
+                    @Override public void onStopTrackingTouch(SeekBar a) {}
                 });
                 bar.setMax(5);
                 bar.setProgress(mTextSize);
-
-                AlertDialog.Builder builder = new AlertDialog.Builder(this)
-                    .setView(view)
-                    .setTitle(R.string.size)
-                    .setPositiveButton(android.R.string.ok, (dialog, arg1) -> {
+                Dialog dialog = new AlertDialog.Builder(this)
+                    .setView(view).setTitle(R.string.size)
+                    .setPositiveButton(android.R.string.ok, (d, a) -> {
                         mTextSize = bar.getProgress();
                         mBody.setTextSize(getTextSize(mTextSize));
                         mUserPreferences.setReadingTextSize(bar.getProgress());
-                    });
-                Dialog dialog = builder.show();
+                    }).show();
                 BrowserDialog.setDialogSize(this, dialog);
                 break;
             default:
