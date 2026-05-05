@@ -1,7 +1,6 @@
 package com.mohan.pensieve;
 
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -84,31 +83,31 @@ public class MainActivity extends AppCompatActivity {
         webView.loadUrl(HOME_URL);
     }
 
-    // ── Bind ─────────────────────────────────────────────────────────────────
+    // ── Bind ──────────────────────────────────────────────────────────────────
     private void bindViews() {
-        etUrl          = findViewById(R.id.et_url);
-        btnBack        = findViewById(R.id.btn_back);
-        btnForward     = findViewById(R.id.btn_forward);
-        btnRefresh     = findViewById(R.id.btn_refresh);
-        btnBackBottom  = findViewById(R.id.btn_back_bottom);
+        etUrl            = findViewById(R.id.et_url);
+        btnBack          = findViewById(R.id.btn_back);
+        btnForward       = findViewById(R.id.btn_forward);
+        btnRefresh       = findViewById(R.id.btn_refresh);
+        btnBackBottom    = findViewById(R.id.btn_back_bottom);
         btnForwardBottom = findViewById(R.id.btn_forward_bottom);
-        btnGallery     = findViewById(R.id.btn_gallery);
-        btnShare       = findViewById(R.id.btn_share);
-        btnMenu        = findViewById(R.id.btn_menu);
-        btnClearUrl    = findViewById(R.id.btn_clear_url);
-        ivLock         = findViewById(R.id.iv_lock);
-        progressBar    = findViewById(R.id.progress_bar);
-        swipeRefresh   = findViewById(R.id.swipe_refresh);
-        statusBarSpacer = findViewById(R.id.status_bar_spacer);
-        navBarSpacer   = findViewById(R.id.nav_bar_spacer);
-        webView        = findViewById(R.id.webView);
+        btnGallery       = findViewById(R.id.btn_gallery);
+        btnShare         = findViewById(R.id.btn_share);
+        btnMenu          = findViewById(R.id.btn_menu);
+        btnClearUrl      = findViewById(R.id.btn_clear_url);
+        ivLock           = findViewById(R.id.iv_lock);
+        progressBar      = findViewById(R.id.progress_bar);
+        swipeRefresh     = findViewById(R.id.swipe_refresh);
+        statusBarSpacer  = findViewById(R.id.status_bar_spacer);
+        navBarSpacer     = findViewById(R.id.nav_bar_spacer);
+        webView          = findViewById(R.id.webView);
     }
 
-    // ── Window Insets (fixes status bar overlay) ─────────────────────────────
+    // ── Window Insets ─────────────────────────────────────────────────────────
     private void applyWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(
                 findViewById(R.id.main_container), (v, insets) -> {
-            int top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            int top    = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
             int bottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
 
             ViewGroup.LayoutParams spTop = statusBarSpacer.getLayoutParams();
@@ -123,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // ── SwipeRefresh ─────────────────────────────────────────────────────────
+    // ── SwipeRefresh ──────────────────────────────────────────────────────────
     private void setupSwipeRefresh() {
         swipeRefresh.setOnRefreshListener(() -> {
             webView.reload();
@@ -189,7 +188,6 @@ public class MainActivity extends AppCompatActivity {
         if (input == null || input.isEmpty()) return;
         hideKeyboard();
         etUrl.clearFocus();
-
         String url;
         if (input.startsWith("http://") || input.startsWith("https://")) {
             url = input;
@@ -232,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        btnMenu.setOnClickListener(v -> showMenu(v));
+        btnMenu.setOnClickListener(this::showMenu);
     }
 
     private void showMenu(View anchor) {
@@ -254,23 +252,17 @@ public class MainActivity extends AppCompatActivity {
                     return true;
                 case 4:
                     try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(webView.getUrl()))); }
-                    catch (Exception e) { }
+                    catch (Exception ignored) { }
                     return true;
                 case 5:
                     WebSettings ws = webView.getSettings();
                     boolean isDesktop = ws.getUserAgentString().contains("Windows");
-                    if (isDesktop) {
-                        ws.setUserAgentString(
-                            "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 " +
-                            "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
-                        ws.setUseWideViewPort(true);
-                        item.setTitle("Desktop site");
-                    } else {
-                        ws.setUserAgentString(
-                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-                        ws.setUseWideViewPort(true);
-                    }
+                    ws.setUserAgentString(isDesktop
+                        ? "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 " +
+                          "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+                        : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                          "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                    ws.setUseWideViewPort(true);
                     webView.reload();
                     return true;
             }
@@ -280,8 +272,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateNavButtons() {
-        float backAlpha = webView.canGoBack() ? 1.0f : 0.35f;
-        float fwdAlpha = webView.canGoForward() ? 1.0f : 0.35f;
+        float backAlpha = webView.canGoBack()    ? 1.0f : 0.35f;
+        float fwdAlpha  = webView.canGoForward() ? 1.0f : 0.35f;
         btnBack.setAlpha(backAlpha);
         btnBackBottom.setAlpha(backAlpha);
         btnForward.setAlpha(fwdAlpha);
@@ -297,19 +289,26 @@ public class MainActivity extends AppCompatActivity {
     class PensieveWebViewClient extends WebViewClient {
 
         @Override
-        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            interceptor.intercept(request);
-            return null;
+        public WebResourceResponse shouldInterceptRequest(WebView view,
+                                                          WebResourceRequest request) {
+            // FIX: return the interceptor's response instead of ignoring it.
+            // When the URL is media, this returns a TeeInputStream-backed response
+            // so the WebView reads from a single connection that simultaneously
+            // writes to disk — zero extra data usage.
+            // For non-media URLs the interceptor returns null and WebView handles normally.
+            return interceptor.intercept(request);
         }
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            return handleUri(view, request.getUrl());
+            return handleUri(request.getUrl());
         }
 
-        private boolean handleUri(WebView view, Uri uri) {
+        private boolean handleUri(Uri uri) {
             String scheme = uri.getScheme();
-            if ("http".equals(scheme) || "https".equals(scheme) || "file".equals(scheme)) return false;
+            if ("http".equals(scheme) || "https".equals(scheme) || "file".equals(scheme)) {
+                return false;
+            }
             try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
             catch (ActivityNotFoundException e) {
                 Toast.makeText(MainActivity.this, "Can't open this link", Toast.LENGTH_SHORT).show();
@@ -324,7 +323,8 @@ public class MainActivity extends AppCompatActivity {
             progressBar.setVisibility(View.VISIBLE);
             swipeRefresh.setRefreshing(false);
             if (!etUrl.isFocused()) etUrl.setText(cleanUrl(url));
-            ivLock.setVisibility(url != null && url.startsWith("https://") ? View.VISIBLE : View.GONE);
+            ivLock.setVisibility(url != null && url.startsWith("https://")
+                    ? View.VISIBLE : View.GONE);
             updateNavButtons();
         }
 
@@ -363,32 +363,34 @@ public class MainActivity extends AppCompatActivity {
 
     // ── JS Injection ──────────────────────────────────────────────────────────
     private void injectMediaCatcher() {
+        // FIX: read the real <source type="..."> attribute instead of
+        // hardcoding 'video/mp4' and 'audio/mpeg' for every element.
         String js =
             "(function() {" +
             "  function report(url, mime) {" +
             "    if (!url || url.startsWith('data:') || url.startsWith('blob:')) return;" +
             "    window.AndroidInterface.onMediaUrl(url, mime || '');" +
             "  }" +
+            "  function scanNode(n) {" +
+            "    if (!n || !n.tagName) return;" +
+            "    var t = n.tagName.toLowerCase();" +
+            "    if (t === 'img') {" +
+            "      report(n.src, n.getAttribute('type') || 'image/jpeg');" +
+            "    }" +
+            "    if (t === 'video' || t === 'audio') {" +
+            "      if (n.src) report(n.src, n.getAttribute('type') || '');" +
+            "      n.querySelectorAll('source').forEach(function(s) {" +
+            "        report(s.src, s.type || '');" +   // use the real type attribute
+            "      });" +
+            "    }" +
+            "  }" +
             "  var obs = new MutationObserver(function(muts) {" +
             "    muts.forEach(function(m) {" +
-            "      m.addedNodes.forEach(function(n) {" +
-            "        if (!n.tagName) return;" +
-            "        var t = n.tagName.toLowerCase();" +
-            "        if (t==='img') report(n.src,'image/jpeg');" +
-            "        if (t==='video'||t==='audio') {" +
-            "          report(n.src,t==='video'?'video/mp4':'audio/mpeg');" +
-            "          n.querySelectorAll('source').forEach(function(s){report(s.src,s.type);});" +
-            "        }" +
-            "      });" +
+            "      m.addedNodes.forEach(function(n) { scanNode(n); });" +
             "    });" +
             "  });" +
-            "  if (document.body) obs.observe(document.body,{childList:true,subtree:true});" +
-            "  document.querySelectorAll('img').forEach(function(e){report(e.src,'image/jpeg');});" +
-            "  document.querySelectorAll('video,audio').forEach(function(e){" +
-            "    var m=e.tagName.toLowerCase()==='video'?'video/mp4':'audio/mpeg';" +
-            "    report(e.src,m);" +
-            "    e.querySelectorAll('source').forEach(function(s){report(s.src,s.type);});" +
-            "  });" +
+            "  if (document.body) obs.observe(document.body, {childList:true, subtree:true});" +
+            "  document.querySelectorAll('img,video,audio').forEach(scanNode);" +
             "})();";
         webView.evaluateJavascript(js, null);
     }
@@ -401,7 +403,10 @@ public class MainActivity extends AppCompatActivity {
             String mime = (mimeType != null && !mimeType.isEmpty())
                     ? mimeType : MediaSaver.guessMimeFromUrl(url);
             if (!MediaSaver.isMediaMime(mime)) return;
-            interceptor.processUrl(url, mime);
+            // FIX: route through processUrlFromJs (not the old processUrl).
+            // This checks whether shouldInterceptRequest already handled the URL
+            // and only falls back to a download if it genuinely missed it.
+            interceptor.processUrlFromJs(url, mime);
         }
 
         @android.webkit.JavascriptInterface
@@ -417,23 +422,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ── Download Listener ─────────────────────────────────────────────────────
-    DownloadListener downloadListener = (url, userAgent, contentDisposition, mimetype, contentLength) -> {
+    DownloadListener downloadListener = (url, userAgent, contentDisposition,
+                                         mimetype, contentLength) -> {
         if (url.startsWith("blob:")) {
             webView.evaluateJavascript(
                 "(async function() {" +
                 "  const blob = await fetch('" + url + "').then(r=>r.blob());" +
                 "  const reader = new FileReader();" +
                 "  reader.onload = function() {" +
-                "    window.AndroidInterface.saveBlob(reader.result.split(',')[1],'media.bin');" +
+                "    window.AndroidInterface.saveBlob(" +
+                "      reader.result.split(',')[1], 'media.bin');" +
                 "  };" +
                 "  reader.readAsDataURL(blob);" +
                 "})()", null);
         } else if (MediaSaver.isMediaMime(mimetype)) {
+            // Download listener fires for explicit user-triggered downloads —
+            // the WebView won't render these so the tee path doesn't apply.
+            // This is a legitimate one-download save.
             saver.saveFromUrl(url, mimetype, (filePath, fileName) ->
                     runOnUiThread(() -> showSavedSnackbar(fileName)));
         } else {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
-            catch (Exception e) { Toast.makeText(this, "Can't open download", Toast.LENGTH_SHORT).show(); }
+            catch (Exception e) {
+                Toast.makeText(this, "Can't open download", Toast.LENGTH_SHORT).show();
+            }
         }
     };
 
@@ -446,7 +458,8 @@ public class MainActivity extends AppCompatActivity {
 
     // ── Activity Results ──────────────────────────────────────────────────────
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode,
+                                    @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == CREATE_FILE_CODE && resultCode == Activity.RESULT_OK) {
             if (data != null && data.getData() != null) {
