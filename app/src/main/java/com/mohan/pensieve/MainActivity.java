@@ -29,8 +29,6 @@ import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 import android.webkit.CookieManager;
-import com.mohan.pensieve.vpn.CertificateManager;
-import com.mohan.pensieve.vpn.VpnHelper;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -66,8 +64,6 @@ public class MainActivity extends AppCompatActivity {
     private static ValueCallback<Uri[]> mUploadMessageArr;
     private byte[] fileDataToSave;
     private boolean isLoading = false;
-    private VpnHelper vpnHelper;
-    private CertificateManager certManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -246,8 +242,6 @@ public class MainActivity extends AppCompatActivity {
         menu.getMenu().add(0, 3, 0, "Copy URL");
         menu.getMenu().add(0, 4, 0, "Open in browser");
         menu.getMenu().add(0, 5, 0, "Desktop site");
-        menu.getMenu().add(0, 6, 0, vpnHelper.isEnabled() ? "⏹ Stop VPN Saver" : "▶ Start VPN Saver");
-        menu.getMenu().add(0, 7, 0, "Install Certificate");
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
                 case 1: webView.loadUrl(HOME_URL); return true;
@@ -278,10 +272,6 @@ public class MainActivity extends AppCompatActivity {
                         ws.setUseWideViewPort(true);
                     }
                     webView.reload();
-                    return true;
-                case 6: vpnHelper.toggle(); return true;
-                case 7:
-                    new Thread(() -> { try { certManager.init(); runOnUiThread(() -> vpnHelper.installCertificate(certManager)); } catch (Exception e) { runOnUiThread(() -> android.widget.Toast.makeText(this, "Cert error: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show()); }}).start();
                     return true;
             }
             return false;
@@ -458,10 +448,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == VpnHelper.VPN_PERMISSION_CODE) {
-            if (resultCode == Activity.RESULT_OK) vpnHelper.start();
-            return;
-        }
         if (requestCode == CREATE_FILE_CODE && resultCode == Activity.RESULT_OK) {
             if (data != null && data.getData() != null) {
                 try (OutputStream os = getContentResolver().openOutputStream(data.getData())) {

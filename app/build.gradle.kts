@@ -10,8 +10,8 @@ android {
         applicationId = "com.mohan.pensieve"
         minSdk = 21
         targetSdk = 34
-        versionCode = 7
-        versionName = "7.0"
+        versionCode = 6
+        versionName = "6.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -28,26 +28,11 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
     buildFeatures { viewBinding = true }
-
-    packaging {
-        resources {
-            excludes += setOf(
-                "META-INF/DEPENDENCIES",
-                "META-INF/LICENSE",
-                "META-INF/LICENSE.txt",
-                "META-INF/NOTICE",
-                "META-INF/NOTICE.txt"
-            )
-        }
-    }
 }
 
 dependencies {
@@ -59,14 +44,4 @@ dependencies {
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
-
-    // Conscrypt — modern TLS on all Android versions
-    implementation("org.conscrypt:conscrypt-android:2.5.2")
-
-    // Bouncy Castle — certificate generation (self-signed CA)
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
-    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
-
-    // OkHttp — robust HTTP/HTTPS proxying
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
