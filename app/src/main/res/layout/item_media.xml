@@ -33,14 +33,14 @@
             android:layout_margin="6dp"
             app:cardCornerRadius="6dp"
             app:cardElevation="0dp"
-            app:cardBackgroundColor="?attr/colorSurfaceInverse">
+            app:cardBackgroundColor="#CC000000">
 
             <ImageView
                 android:id="@+id/iv_type_badge"
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:layout_margin="4dp"
-                android:tint="?attr/colorOnSurfaceInverse" />
+                android:tint="#FFFFFFFF" />
 
         </com.google.android.material.card.MaterialCardView>
 

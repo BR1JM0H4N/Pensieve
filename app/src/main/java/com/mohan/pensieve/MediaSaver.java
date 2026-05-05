@@ -14,17 +14,27 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MediaSaver {
     private static final String TAG = "MediaSaver";
     private static final String BASE_DIR = "Pensieve";
+
     private final Context context;
 
-    // Single-thread executor: disk I/O doesn't benefit from parallelism
-    // and serialising writes eliminates file-interleaving race conditions.
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    // Single-threaded executor per stream key prevents chunk interleaving/race conditions
+    // Key = stream identifier (domain + path prefix), Value = dedicated executor
+    private final ConcurrentHashMap<String, ExecutorService> streamExecutors = new ConcurrentHashMap<>();
+
+    // General executor for non-stream files
+    private final ExecutorService generalExecutor = Executors.newFixedThreadPool(3);
+
+    // Per-stream sequence counter so chunks are named in arrival order
+    private final ConcurrentHashMap<String, AtomicLong> streamCounters = new ConcurrentHashMap<>();
 
     public interface OnSaved {
         void onSaved(String filePath, String fileName);
@@ -61,161 +71,273 @@ public class MediaSaver {
     }
 
     public static String guessMimeFromUrl(String url) {
-        // Try Android's built-in mapper first
-        String ext = MimeTypeMap.getFileExtensionFromUrl(url);
+        // Strip query string before guessing
+        String clean = url.split("\\?")[0].split("#")[0].toLowerCase();
+        String ext = MimeTypeMap.getFileExtensionFromUrl(clean);
         if (ext != null && !ext.isEmpty()) {
-            String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.toLowerCase());
+            String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
             if (mime != null) return mime;
         }
-        // Manual fallback (handles URLs with query strings that fool getFileExtensionFromUrl)
-        String lower = url.toLowerCase();
-        if (lower.contains(".jpg")  || lower.contains(".jpeg")) return "image/jpeg";
-        if (lower.contains(".png"))                              return "image/png";
-        if (lower.contains(".gif"))                              return "image/gif";
-        if (lower.contains(".webp"))                             return "image/webp";
-        if (lower.contains(".mp4")  || lower.contains(".m4v"))  return "video/mp4";
-        if (lower.contains(".webm"))                             return "video/webm";
-        if (lower.contains(".ts")   || lower.contains(".m4s"))  return "video/mp2t";
-        if (lower.contains(".mp3"))                              return "audio/mpeg";
-        if (lower.contains(".m4a"))                              return "audio/mp4";
-        if (lower.contains(".ogg"))                              return "audio/ogg";
-        if (lower.contains(".wav"))                              return "audio/wav";
-        if (lower.contains(".aac"))                              return "audio/aac";
+        if (clean.contains(".jpg") || clean.contains(".jpeg")) return "image/jpeg";
+        if (clean.contains(".png"))  return "image/png";
+        if (clean.contains(".gif"))  return "image/gif";
+        if (clean.contains(".webp")) return "image/webp";
+        if (clean.contains(".mp4"))  return "video/mp4";
+        if (clean.contains(".webm")) return "video/webm";
+        if (clean.contains(".mp3"))  return "audio/mpeg";
+        if (clean.contains(".ogg"))  return "audio/ogg";
+        if (clean.contains(".wav"))  return "audio/wav";
+        if (clean.contains(".m4a"))  return "audio/mp4";
+        if (clean.contains(".m3u8")) return "application/x-mpegurl";
+        if (clean.contains(".mpd"))  return "application/dash+xml";
         return null;
     }
 
     // ── Directory helpers ─────────────────────────────────────────────────────
 
     public File getOrCreateDir(MediaItem.Type type) {
-        File subDir = new File(getBaseDir(), getSubDir(type));
-        if (!subDir.exists()) subDir.mkdirs();
-        return subDir;
+        File base = getBaseDir();
+        File sub = new File(base, getSubDir(type));
+        if (!sub.exists()) sub.mkdirs();
+        return sub;
     }
 
-    public File getRootDir() {
-        return getBaseDir();
-    }
+    public File getRootDir() { return getBaseDir(); }
 
     private File getBaseDir() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             return new File(context.getExternalFilesDir(null), BASE_DIR);
         } else {
-            return new File(Environment.getExternalStoragePublicDirectory(
-                    Environment.DIRECTORY_DOWNLOADS), BASE_DIR);
+            return new File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                BASE_DIR);
         }
     }
 
-    // ── Dedup check ───────────────────────────────────────────────────────────
-
-    /**
-     * Returns true if a file whose name starts with the URL's hash already exists.
-     * This is a fast O(n) scan — good enough for typical gallery sizes.
-     */
     public boolean alreadySaved(String url) {
-        String prefix = String.valueOf(Math.abs(url.hashCode()));
+        int hash = Math.abs(url.hashCode());
         for (MediaItem.Type type : MediaItem.Type.values()) {
             File dir = getOrCreateDir(type);
             File[] files = dir.listFiles();
             if (files != null) {
                 for (File f : files) {
-                    // Ignore .tmp files — they are incomplete writes
-                    if (!f.getName().endsWith(".tmp") && f.getName().startsWith(prefix)) {
-                        return true;
-                    }
+                    if (f.getName().startsWith(String.valueOf(hash))) return true;
                 }
             }
         }
         return false;
     }
 
-    // ── Fallback download (used only when tee interception missed a URL) ──────
+    // ── Stream key — identifies which stream a chunk belongs to ──────────────
+    // Uses domain + first two path segments, e.g. "r3---sn-foo.googlevideo.com/videoplayback"
+    private String streamKeyFromUrl(String urlStr) {
+        try {
+            URL u = new URL(urlStr);
+            String host = u.getHost();
+            String[] parts = u.getPath().split("/");
+            // Take host + first meaningful path segment
+            String seg = parts.length > 1 ? parts[1] : "stream";
+            return (host + "_" + seg).replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        } catch (Exception e) {
+            return "stream_" + Math.abs(urlStr.hashCode() % 10000);
+        }
+    }
 
-    /**
-     * Downloads a URL and saves it to disk.
-     * NOTE: This causes one extra network request. It should only be called
-     * by ResourceInterceptor.processUrlFromJs() for URLs that shouldInterceptRequest()
-     * never saw (e.g. dynamically assigned after page load and never re-fetched).
-     * The primary save path is TeeInputStream inside ResourceInterceptor.
-     */
-    public void saveFromUrl(String urlStr, String mimeType, OnSaved callback) {
-        executor.execute(() -> {
+    // Get or create a dedicated single-thread executor for this stream
+    private ExecutorService getStreamExecutor(String streamKey) {
+        return streamExecutors.computeIfAbsent(streamKey,
+                k -> Executors.newSingleThreadExecutor());
+    }
+
+    // Per-stream incrementing counter for sequential chunk naming
+    private long nextChunkIndex(String streamKey) {
+        return streamCounters
+                .computeIfAbsent(streamKey, k -> new AtomicLong(0))
+                .getAndIncrement();
+    }
+
+    // ── Save stream file (manifest, init segment, chunk) ─────────────────────
+    // These all go through a per-stream single-thread executor so they're
+    // written one at a time in arrival order — no interleaving, no race condition.
+    public void saveStreamFile(String urlStr, String ext,
+                               Map<String, String> requestHeaders, OnSaved callback) {
+        String streamKey = streamKeyFromUrl(urlStr);
+        long index = nextChunkIndex(streamKey);
+
+        getStreamExecutor(streamKey).execute(() -> {
             try {
-                if (alreadySaved(urlStr)) {
-                    Log.d(TAG, "Already saved: " + urlStr);
-                    return;
+                // Stream chunks go in Videos/Streams/<streamKey>/
+                File streamDir = new File(getOrCreateDir(MediaItem.Type.VIDEO),
+                        "Streams" + File.separator + streamKey);
+                if (!streamDir.exists()) streamDir.mkdirs();
+
+                // Naming: 00000_init.mp4, 00001_chunk.ts, 00002_chunk.ts ...
+                // init segments always get index 0 prefix so they sort first
+                boolean isInit = urlStr.toLowerCase().contains("init");
+                String prefix = isInit
+                        ? String.format(Locale.US, "%05d_init", index)
+                        : String.format(Locale.US, "%05d_chunk", index);
+
+                // Preserve correct extension — critical for FFmpeg
+                String cleanExt = ext != null ? ext : "bin";
+                String fileName = prefix + "." + cleanExt;
+                File outFile = new File(streamDir, fileName);
+
+                // Don't re-save exact same filename
+                if (outFile.exists() && outFile.length() > 0) return;
+
+                HttpURLConnection conn = openConnection(urlStr, requestHeaders);
+                if (conn == null) return;
+
+                // Write directly — no temp file, so partial data is kept on nav away
+                try (InputStream in = conn.getInputStream();
+                     FileOutputStream out = new FileOutputStream(outFile)) {
+                    byte[] buf = new byte[16384]; // larger buffer for chunks
+                    int n;
+                    while ((n = in.read(buf)) != -1) {
+                        out.write(buf, 0, n);
+                    }
+                    out.flush();
+                } finally {
+                    conn.disconnect();
                 }
+
+                Log.d(TAG, "Stream chunk saved: " + fileName + " (" + outFile.length() + "b)");
+                if (callback != null) callback.onSaved(outFile.getAbsolutePath(), fileName);
+
+            } catch (IOException e) {
+                // Network errors are expected (user navigated away) — just log
+                Log.d(TAG, "Stream chunk partial/failed: " + e.getMessage());
+            }
+        });
+    }
+
+    // ── Save regular media file (images, mp4, mp3, etc.) ─────────────────────
+    public void saveFromUrl(String urlStr, String mimeType,
+                            Map<String, String> requestHeaders, OnSaved callback) {
+        generalExecutor.execute(() -> {
+            try {
+                if (alreadySaved(urlStr)) return;
 
                 MediaItem.Type type = getTypeFromMime(mimeType);
                 File dir = getOrCreateDir(type);
 
                 String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                 int hash = Math.abs(urlStr.hashCode());
-                String ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType);
+
+                // Get extension from URL (strip query string first)
+                String cleanUrl = urlStr.split("\\?")[0];
+                String ext = MimeTypeMap.getFileExtensionFromUrl(cleanUrl);
+                if (ext == null || ext.isEmpty()) {
+                    ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType);
+                }
                 if (ext == null || ext.isEmpty()) ext = "bin";
 
-                File finalFile = new File(dir, hash + "_" + timestamp + "." + ext);
-                File tmpFile   = new File(dir, hash + "_" + timestamp + "." + ext + ".tmp");
+                String fileName = hash + "_" + timestamp + "." + ext;
+                File outFile = new File(dir, fileName);
 
-                URL url = new URL(urlStr);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setConnectTimeout(15_000);
-                conn.setReadTimeout(30_000);
-                conn.setInstanceFollowRedirects(true);
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                HttpURLConnection conn = openConnection(urlStr, requestHeaders);
+                if (conn == null) return;
 
-                int contentLength = conn.getContentLength();
-                if (contentLength > 50 * 1024 * 1024) {
-                    conn.disconnect();
-                    return;
-                }
+                // Skip huge files > 200MB
+                int len = conn.getContentLength();
+                if (len > 200 * 1024 * 1024) { conn.disconnect(); return; }
 
-                // Write to .tmp first, rename on success (no corrupt partial files)
                 try (InputStream in = conn.getInputStream();
-                     FileOutputStream out = new FileOutputStream(tmpFile)) {
-                    byte[] buffer = new byte[8192];
+                     FileOutputStream out = new FileOutputStream(outFile)) {
+                    byte[] buf = new byte[8192];
                     int n;
-                    while ((n = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, n);
+                    while ((n = in.read(buf)) != -1) {
+                        out.write(buf, 0, n);
                     }
+                    out.flush();
+                } finally {
+                    conn.disconnect();
                 }
-                conn.disconnect();
 
-                if (tmpFile.length() > 0 && tmpFile.renameTo(finalFile)) {
-                    if (callback != null) callback.onSaved(finalFile.getAbsolutePath(), finalFile.getName());
-                    Log.d(TAG, "Saved: " + finalFile.getName());
-                } else {
-                    tmpFile.delete();
-                    Log.e(TAG, "Rename failed or empty file: " + urlStr);
-                }
+                if (callback != null) callback.onSaved(outFile.getAbsolutePath(), fileName);
+                Log.d(TAG, "Saved: " + fileName);
 
             } catch (IOException e) {
-                Log.e(TAG, "Failed to save: " + urlStr + " — " + e.getMessage());
+                Log.e(TAG, "Save failed: " + e.getMessage());
             }
         });
     }
 
-    // ── Blob save (from JS FileReader) ────────────────────────────────────────
+    // Backwards compat overload without headers
+    public void saveFromUrl(String urlStr, String mimeType, OnSaved callback) {
+        saveFromUrl(urlStr, mimeType, null, callback);
+    }
 
+    // ── Save raw bytes (blob handler) ─────────────────────────────────────────
     public void saveBytes(byte[] data, String mimeType, String suggestedName, OnSaved callback) {
-        executor.execute(() -> {
+        generalExecutor.execute(() -> {
             try {
                 MediaItem.Type type = getTypeFromMime(mimeType);
                 File dir = getOrCreateDir(type);
-                String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+                String ts = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                 String fileName = (suggestedName != null && !suggestedName.isEmpty())
-                        ? suggestedName : timestamp + "_media";
-                File outFile = new File(dir, fileName);
-                try (FileOutputStream out = new FileOutputStream(outFile)) {
-                    out.write(data);
+                        ? suggestedName : ts + "_media";
+                File out = new File(dir, fileName);
+                try (FileOutputStream fos = new FileOutputStream(out)) {
+                    fos.write(data);
+                    fos.flush();
                 }
-                if (callback != null) callback.onSaved(outFile.getAbsolutePath(), fileName);
+                if (callback != null) callback.onSaved(out.getAbsolutePath(), fileName);
             } catch (IOException e) {
                 Log.e(TAG, "saveBytes error: " + e.getMessage());
             }
         });
     }
 
+    // ── HTTP connection helper ────────────────────────────────────────────────
+    private HttpURLConnection openConnection(String urlStr,
+                                              Map<String, String> requestHeaders) {
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(60000); // longer for video chunks
+            conn.setInstanceFollowRedirects(true);
+
+            // Mirror original request headers so the server accepts us
+            // (range requests, auth tokens, origin headers etc.)
+            if (requestHeaders != null) {
+                for (Map.Entry<String, String> h : requestHeaders.entrySet()) {
+                    String key = h.getKey();
+                    // Skip headers that would cause issues
+                    if (key.equalsIgnoreCase("Accept-Encoding")) continue;
+                    if (key.equalsIgnoreCase("If-None-Match")) continue;
+                    if (key.equalsIgnoreCase("If-Modified-Since")) continue;
+                    try { conn.setRequestProperty(key, h.getValue()); }
+                    catch (Exception ignored) {}
+                }
+            }
+
+            // Always set a reasonable User-Agent if not already set
+            if (requestHeaders == null || !requestHeaders.containsKey("User-Agent")) {
+                conn.setRequestProperty("User-Agent",
+                    "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+            }
+
+            int status = conn.getResponseCode();
+            if (status == 403 || status == 401) {
+                // Server rejected — likely needs cookies/auth we can't replicate
+                Log.d(TAG, "HTTP " + status + " for " + urlStr);
+                conn.disconnect();
+                return null;
+            }
+
+            return conn;
+        } catch (IOException e) {
+            Log.e(TAG, "openConnection failed: " + e.getMessage());
+            return null;
+        }
+    }
+
     public void shutdown() {
-        executor.shutdown();
+        generalExecutor.shutdown();
+        for (ExecutorService ex : streamExecutors.values()) ex.shutdown();
     }
 }

@@ -1,10 +1,4 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!--
-        Base theme uses Theme.Material3.DayNight.NoActionBar.
-        On Android 12+ DynamicColors (applied in PensieveApp) overlays this
-        with the user's wallpaper-derived colour palette automatically.
-        On Android 11 and below the seed colour (#6750A4) in colors.xml is used.
-    -->
     <style name="Base.AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Edge-to-edge -->
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
