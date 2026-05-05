@@ -186,8 +186,9 @@ public class ProxyServer {
         sslCtx.init(kmf.getKeyManagers(), null, null);
 
         // Wrap client socket in TLS — we present our fake cert
+        // createSocket(Socket, String host, int port, boolean autoClose)
         SSLSocket sslClient = (SSLSocket) sslCtx.getSocketFactory()
-                .createSocket(clientSocket, clientIn, true);
+                .createSocket(clientSocket, host, port, true);
         sslClient.setUseClientMode(false);
         sslClient.startHandshake();
 
