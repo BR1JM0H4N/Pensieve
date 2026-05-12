@@ -1,241 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface">
+    android:orientation="vertical">
 
     <LinearLayout
-        android:id="@+id/main_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
 
-        <!-- Status bar spacer — height set in code via WindowInsets -->
-        <View
-            android:id="@+id/status_bar_spacer"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:background="?attr/colorSurface" />
-
-        <!-- Top browser bar -->
-        <LinearLayout
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:background="?attr/colorSurface">
-
-            <ImageButton
-                android:id="@+id/btn_back"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Back"
-                android:src="@drawable/ic_arrow_back"
-                android:tint="?attr/colorOnSurface"
-                android:alpha="0.4"
-                android:padding="8dp" />
-
-            <ImageButton
-                android:id="@+id/btn_forward"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Forward"
-                android:src="@drawable/ic_arrow_forward"
-                android:tint="?attr/colorOnSurface"
-                android:alpha="0.4"
-                android:padding="8dp" />
-
-            <!-- URL pill -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/url_card"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:layout_marginStart="6dp"
-                android:layout_marginEnd="6dp"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp"
-                app:cardBackgroundColor="?attr/colorSurfaceVariant">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="6dp">
-
-                    <ImageView
-                        android:id="@+id/iv_lock"
-                        android:layout_width="13dp"
-                        android:layout_height="13dp"
-                        android:src="@drawable/ic_lock"
-                        android:tint="?attr/colorOnSurfaceVariant"
-                        android:layout_marginEnd="5dp"
-                        android:visibility="gone" />
-
-                    <EditText
-                        android:id="@+id/et_url"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:background="@null"
-                        android:ellipsize="end"
-                        android:hint="Search or type URL"
-                        android:imeOptions="actionGo"
-                        android:inputType="textUri|textNoSuggestions"
-                        android:maxLines="1"
-                        android:singleLine="true"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textColorHint="?attr/colorOnSurfaceVariant"
-                        android:textSize="13sp"
-                        android:selectAllOnFocus="true" />
-
-                    <ImageButton
-                        android:id="@+id/btn_clear_url"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:src="@drawable/ic_close"
-                        android:tint="?attr/colorOnSurfaceVariant"
-                        android:padding="4dp"
-                        android:visibility="gone"
-                        android:contentDescription="Clear" />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <ImageButton
-                android:id="@+id/btn_refresh"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Refresh"
-                android:src="@drawable/ic_refresh"
-                android:tint="?attr/colorOnSurface"
-                android:padding="8dp" />
-
-        </LinearLayout>
-
-        <!-- Loading progress -->
-        <com.google.android.material.progressindicator.LinearProgressIndicator
-            android:id="@+id/progress_bar"
-            android:layout_width="match_parent"
+        <EditText
+            android:id="@+id/urlInput"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:visibility="gone"
-            app:trackCornerRadius="0dp"
-            app:trackThickness="2dp"
-            app:indicatorColor="?attr/colorPrimary"
-            app:trackColor="@android:color/transparent" />
+            android:layout_weight="1"
+            android:hint="Enter URL"
+            android:singleLine="true"/>
 
-        <!-- Divider -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?attr/colorOutlineVariant" />
-
-        <!-- WebView -->
-        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-            android:id="@+id/swipe_refresh"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <WebView
-                android:id="@+id/webView"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-
-        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-        <!-- Divider above bottom bar -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?attr/colorOutlineVariant" />
-
-        <!-- Bottom navigation bar -->
-        <LinearLayout
-            android:id="@+id/bottom_bar"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:orientation="horizontal"
-            android:background="?attr/colorSurface">
-
-            <ImageButton
-                android:id="@+id/btn_back_bottom"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Back"
-                android:src="@drawable/ic_arrow_back"
-                android:tint="?attr/colorOnSurface"
-                android:alpha="0.4"
-                android:padding="14dp" />
-
-            <ImageButton
-                android:id="@+id/btn_forward_bottom"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Forward"
-                android:src="@drawable/ic_arrow_forward"
-                android:tint="?attr/colorOnSurface"
-                android:alpha="0.4"
-                android:padding="14dp" />
-
-            <ImageButton
-                android:id="@+id/btn_gallery"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Gallery"
-                android:src="@drawable/ic_gallery"
-                android:tint="?attr/colorPrimary"
-                android:padding="14dp" />
-
-            <ImageButton
-                android:id="@+id/btn_share"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Share"
-                android:src="@drawable/ic_share"
-                android:tint="?attr/colorOnSurface"
-                android:padding="14dp" />
-
-            <ImageButton
-                android:id="@+id/btn_menu"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Menu"
-                android:src="@drawable/ic_more_vert"
-                android:tint="?attr/colorOnSurface"
-                android:padding="14dp" />
-
-        </LinearLayout>
-
-        <!-- Navigation bar spacer -->
-        <View
-            android:id="@+id/nav_bar_spacer"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:background="?attr/colorSurface" />
+        <Button
+            android:id="@+id/goButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Go"/>
 
     </LinearLayout>
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+</LinearLayout>

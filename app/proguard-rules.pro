@@ -1,21 +1,94 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# =========================================
+# NetSaver ProGuard Rules
+# =========================================
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep source file + line numbers
+# Better crash logs/debugging
+-keepattributes SourceFile,LineNumberTable
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep annotations
+-keepattributes *Annotation*
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# =========================================
+# WebView
+# =========================================
+
+# Keep JavaScript interfaces
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Prevent WebView classes from being stripped
+-keep class android.webkit.** { *; }
+
+# =========================================
+# OkHttp / Okio
+# =========================================
+
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# Keep okhttp internals
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+
+# =========================================
+# Media3 / ExoPlayer
+# =========================================
+
+-keep class androidx.media3.** { *; }
+
+-dontwarn androidx.media3.**
+
+# =========================================
+# RecyclerView
+# =========================================
+
+-keep class androidx.recyclerview.** { *; }
+
+# =========================================
+# AppCompat / Material
+# =========================================
+
+-keep class androidx.appcompat.** { *; }
+
+-keep class com.google.android.material.** { *; }
+
+# =========================================
+# Activities
+# =========================================
+
+-keep public class * extends androidx.appcompat.app.AppCompatActivity
+
+# =========================================
+# Prevent enum stripping
+# =========================================
+
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# =========================================
+# Keep native methods
+# =========================================
+
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# =========================================
+# Preserve constructors
+# =========================================
+
+-keepclassmembers class * {
+    public <init>(...);
+}
+
+# =========================================
+# Suppress common warnings
+# =========================================
+
+-dontwarn javax.annotation.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**

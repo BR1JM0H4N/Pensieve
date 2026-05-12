@@ -14,6 +14,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Pensieve"
+rootProject.name = "Netsaver"
 
 include(":app")
